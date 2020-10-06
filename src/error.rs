@@ -1,14 +1,32 @@
 #[derive(Debug)]
-pub enum MathMatrixError {
-	FailedToInitialize(String),
+pub enum MathMatrixErrorKind {
+	FailedToInitialize,
+	OutOfBoundary,
+	SizeMismatch,
+}
+
+#[derive(Debug)]
+pub struct MathMatrixError {
+	kind: MathMatrixErrorKind,
+	message: String,
+}
+
+impl MathMatrixError {
+	pub fn new(kind: MathMatrixErrorKind, message: String) -> Self {
+		Self { kind, message }
+	}
+
+	pub fn get_kind(&self) -> String {
+		return format!("{:?}", self.kind);
+	}
+
+	pub fn get_message(&self) -> String {
+		return self.message.clone();
+	}
 }
 
 impl ToString for MathMatrixError {
 	fn to_string(&self) -> String {
-		match self {
-			MathMatrixError::FailedToInitialize(string) => {
-				return format!("Error: {}", string);
-			}
-		}
+		return format!("{:?} error: {}", self.kind, self.message);
 	}
 }
