@@ -8,6 +8,52 @@ pub struct Matrix {
 	data: Vec<f64>,
 }
 
+impl std::ops::Add for Matrix {
+	type Output = Result<Matrix, MathMatrixError>;
+
+	fn add(self, other: Matrix) -> Result<Matrix, MathMatrixError> {
+		if self.get_size() == other.get_size() {
+			let mut new_data = vec![0f64; self.rows * self.cols];
+			for i in 0..(self.rows * self.cols) {
+				new_data[i] = self.data[i] + other.data[i];
+			}
+			Ok(Matrix {
+				rows: self.rows,
+				cols: self.cols,
+				data: new_data,
+			})
+		} else {
+			Err(MathMatrixError::new(
+				SizeMismatch,
+				"Operation not allowed between matrices with different sizes".to_owned(),
+			))
+		}
+	}
+}
+
+impl std::ops::Sub for Matrix {
+	type Output = Result<Matrix, MathMatrixError>;
+
+	fn sub(self, other: Matrix) -> Result<Matrix, MathMatrixError> {
+		if self.get_size() == other.get_size() {
+			let mut new_data = vec![0f64; self.rows * self.cols];
+			for i in 0..(self.rows * self.cols) {
+				new_data[i] = self.data[i] - other.data[i];
+			}
+			Ok(Matrix {
+				rows: self.rows,
+				cols: self.cols,
+				data: new_data,
+			})
+		} else {
+			Err(MathMatrixError::new(
+				SizeMismatch,
+				"Operation not allowed between matrices with different sizes".to_owned(),
+			))
+		}
+	}
+}
+
 impl Matrix {
 	/* Column major. Example:
 		- rows: 3
@@ -18,6 +64,12 @@ impl Matrix {
 		c f
 	*/
 	pub fn new(rows: usize, cols: usize, data: Vec<f64>) -> Result<Self, MathMatrixError> {
+		if rows * cols == 0 {
+			return Err(MathMatrixError::new(
+				FailedToInitialize,
+				"Rows and columns must be lager than 0".to_owned(),
+			));
+		}
 		if rows * cols == data.len() {
 			Ok(Self { rows, cols, data })
 		} else {
@@ -39,7 +91,7 @@ impl Matrix {
 				data[i + rows * j] = if i == j { 1.0 } else { 0.0 }
 			}
 		}
-		return Ok(Matrix {rows, cols, data});
+		return Matrix::new(rows, cols, data);
 	}
 
 	pub fn set_value(&mut self, row: usize, col: usize, value: f64) -> Result<(), MathMatrixError> {
@@ -111,24 +163,40 @@ impl Matrix {
 		return output_matrix;
 	}
 
-	pub fn get_column(&self, index: usize) -> Self {
+	pub fn get_column(&self, index: usize) -> Result<Self, MathMatrixError> {
+		if index > self.cols {
+			return Err(MathMatrixError::new(
+				OutOfBoundary,
+				format!("Column {} > {}", index, self.cols),
+			));
+		}
 		let rows = self.rows;
 		let cols = 1;
 		let mut data = vec![0f64; rows];
 		for i in 0..rows {
 			data[i] = self.get_value(i, index).unwrap();
 		}
-		return Self { rows, cols, data };
+		return Self::new(rows, cols, data);
 	}
 
-	pub fn get_row(&self, index: usize) -> Self {
+	pub fn get_row(&self, index: usize) -> Result<Self, MathMatrixError> {
+		if index > self.rows {
+			return Err(MathMatrixError::new(
+				OutOfBoundary,
+				format!("Row {} > {}", index, self.rows),
+			));
+		}
 		let rows = 1;
 		let cols = self.cols;
 		let mut data = vec![0f64; cols];
 		for i in 0..cols {
 			data[i] = self.get_value(index, i).unwrap();
 		}
-		return Self { rows, cols, data };
+		return Self::new(rows, cols, data);
+	}
+
+	pub fn get_size(&self) -> (usize, usize) {
+		return (self.rows, self.cols);
 	}
 
 	pub fn set_column(
@@ -151,6 +219,10 @@ impl Matrix {
 			}
 		}
 		Ok(())
+	}
+ 
+	pub fn get_data(&self) -> Vec<f64> {
+		return self.data.clone();
 	}
 
 	pub fn set_row(&mut self, row_number: usize, new_row: Vec<f64>) -> Result<(), MathMatrixError> {
@@ -247,11 +319,11 @@ mod tests {
 		1 1 0
 		0 2 1
 		*/
-		let mat2 = mat1.get_column(0);
+		let mat2 = mat1.get_column(0).unwrap();
 		assert_eq!(mat2.data, vec![1.0, 0.0]);
-		let mat2 = mat1.get_column(1);
+		let mat2 = mat1.get_column(1).unwrap();
 		assert_eq!(mat2.data, vec![1.0, 2.0]);
-		let mat2 = mat1.get_column(2);
+		let mat2 = mat1.get_column(2).unwrap();
 		assert_eq!(mat2.data, vec![0.0, 1.0]);
 	}
 
@@ -262,9 +334,9 @@ mod tests {
 		1 1 0
 		0 2 1
 		*/
-		let mat2 = mat1.get_row(0);
+		let mat2 = mat1.get_row(0).unwrap();
 		assert_eq!(mat2.data, vec![1.0, 1.0, 0.0]);
-		let mat2 = mat1.get_row(1);
+		let mat2 = mat1.get_row(1).unwrap();
 		assert_eq!(mat2.data, vec![0.0, 2.0, 1.0]);
 	}
 
