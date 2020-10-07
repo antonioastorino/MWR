@@ -32,6 +32,16 @@ impl Matrix {
 		}
 	}
 
+	pub fn identity(rows: usize, cols: usize) -> Result<Self, MathMatrixError> {
+		let mut data = vec![0f64; rows * cols];
+		for j in 0..cols {
+			for i in 0..rows {
+				data[i + rows * j] = if i == j { 1.0 } else { 0.0 }
+			}
+		}
+		return Ok(Matrix {rows, cols, data});
+	}
+
 	pub fn set_value(&mut self, row: usize, col: usize, value: f64) -> Result<(), MathMatrixError> {
 		if row > self.rows {
 			return Err(MathMatrixError::new(
@@ -177,11 +187,22 @@ mod tests {
 	use super::*;
 
 	#[test]
-	fn test_new_matrix() {
+	fn test_new() {
 		let mat = Matrix::new(2, 3, vec![0.1, 0.3, 5., 6., 0., 0.]).unwrap();
 		assert_eq!(mat.rows, 2);
 		assert_eq!(mat.cols, 3);
 		assert_eq!(mat.data, vec![0.1, 0.3, 5., 6., 0., 0.]);
+	}
+
+	#[test]
+	fn test_identity() {
+		let mat = Matrix::identity(3, 4).unwrap();
+		assert_eq!(mat.rows, 3);
+		assert_eq!(mat.cols, 4);
+		assert_eq!(
+			mat.data,
+			vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
+		);
 	}
 
 	#[test]
