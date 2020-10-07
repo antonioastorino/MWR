@@ -17,7 +17,7 @@ impl Matrix {
 		b e
 		c f
 	*/
-	pub fn new<'a>(rows: usize, cols: usize, data: Vec<f64>) -> Result<Self, MathMatrixError> {
+	pub fn new(rows: usize, cols: usize, data: Vec<f64>) -> Result<Self, MathMatrixError> {
 		if rows * cols == data.len() {
 			Ok(Self { rows, cols, data })
 		} else {
@@ -121,6 +121,46 @@ impl Matrix {
 		return Self { rows, cols, data };
 	}
 
+	pub fn set_column(
+		&mut self,
+		column_number: usize,
+		new_column: Vec<f64>,
+	) -> Result<(), MathMatrixError> {
+		let column_length = new_column.len();
+		if column_length != self.rows {
+			return Err(MathMatrixError::new(
+				SizeMismatch,
+				format!(
+					"Passed column of length {} but expected {}",
+					column_length, self.rows
+				),
+			));
+		} else {
+			for i in 0..column_length {
+				self.set_value(i, column_number, new_column[i]).unwrap();
+			}
+		}
+		Ok(())
+	}
+
+	pub fn set_row(&mut self, row_number: usize, new_row: Vec<f64>) -> Result<(), MathMatrixError> {
+		let row_length = new_row.len();
+		if row_length != self.cols {
+			return Err(MathMatrixError::new(
+				SizeMismatch,
+				format!(
+					"Passed row of length {} but expected {}",
+					row_length, self.cols
+				),
+			));
+		} else {
+			for i in 0..row_length {
+				self.set_value(row_number, i, new_row[i]).unwrap();
+			}
+		}
+		Ok(())
+	}
+
 	pub fn print(&self) {
 		for i in 0..self.rows {
 			for j in 0..self.cols {
@@ -143,6 +183,7 @@ mod tests {
 		assert_eq!(mat.cols, 3);
 		assert_eq!(mat.data, vec![0.1, 0.3, 5., 6., 0., 0.]);
 	}
+
 	#[test]
 	fn test_set_value() {
 		let mut mat = Matrix::new(2, 3, vec![0.1, 0.3, 5., 6., 0., 0.]).unwrap();
@@ -204,5 +245,32 @@ mod tests {
 		assert_eq!(mat2.data, vec![1.0, 1.0, 0.0]);
 		let mat2 = mat1.get_row(1);
 		assert_eq!(mat2.data, vec![0.0, 2.0, 1.0]);
+	}
+
+	#[test]
+	fn test_set_column() {
+		let mut mat1 = Matrix::new(2, 3, vec![1.0, 0.0, 1.0, 2.0, 0.0, 1.0]).unwrap();
+		/*
+		1 1 0
+		0 2 1
+		*/
+		mat1.set_column(0, vec![0.1, 0.2]).unwrap();
+		assert_eq!(mat1.data, vec![0.1, 0.2, 1.0, 2.0, 0.0, 1.0]);
+		mat1.set_column(1, vec![1.1, 1.2]).unwrap();
+		assert_eq!(mat1.data, vec![0.1, 0.2, 1.1, 1.2, 0.0, 1.0]);
+		mat1.set_column(2, vec![2.1, 2.2]).unwrap();
+		assert_eq!(mat1.data, vec![0.1, 0.2, 1.1, 1.2, 2.1, 2.2]);
+	}
+	#[test]
+	fn test_set_row() {
+		let mut mat1 = Matrix::new(2, 3, vec![1.0, 0.0, 1.0, 2.0, 0.0, 1.0]).unwrap();
+		/*
+		1 1 0
+		0 2 1
+		*/
+		mat1.set_row(0, vec![0.1, 0.2, 0.3]).unwrap();
+		assert_eq!(mat1.data, vec![0.1, 0.0, 0.2, 2.0, 0.3, 1.0]);
+		mat1.set_row(1, vec![1.1, 1.2, 1.3]).unwrap();
+		assert_eq!(mat1.data, vec![0.1, 1.1, 0.2, 1.2, 0.3, 1.3]);
 	}
 }
