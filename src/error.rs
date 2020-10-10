@@ -3,6 +3,8 @@ pub enum MathMatrixErrorKind {
 	FailedToInitialize,
 	OutOfBoundary,
 	SizeMismatch,
+	FailedToDecompose,
+	OperationNotPermitted,
 }
 
 #[derive(Debug)]

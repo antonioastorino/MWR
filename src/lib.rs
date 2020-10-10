@@ -1,3 +1,3 @@
 pub mod error;
+pub mod algorithms;
 pub mod matrix;
-pub mod lu_decomposition;
