@@ -180,6 +180,108 @@ impl Matrix {
 		return transposed_matrix;
 	}
 
+	pub fn decompose(&self) -> Result<(Matrix, Matrix), MathMatrixError> {
+		let (rows, cols) = self.get_size();
+		if rows != cols {
+			return Err(MathMatrixError::new(
+				OperationNotPermitted,
+				"LU decomposition allowed only for square matrices".to_owned(),
+			));
+		}
+		let mut u = self.clone();
+		let mut l = Matrix::identity(rows, cols)?;
+		for i in 1..rows {
+			for j in 0..i {
+				let numerator = u.get_value(i, j)?;
+				let denominator = u.get_value(j, j)?;
+				if denominator == 0.0 {
+					return Err(MathMatrixError::new(
+						FailedToDecompose,
+						"Found zero".to_owned(),
+					));
+				}
+				let multiplier = numerator / denominator;
+				l.set_value(i, j, multiplier)?;
+				let mut tmp_mat = Matrix::identity(rows, cols)?;
+				tmp_mat.set_value(i, j, -multiplier)?;
+				u = tmp_mat.multiplied_by_matrix(&u)?;
+			}
+		}
+		return Ok((l, u));
+	}
+
+	pub fn invert(&self) -> Result<Matrix, MathMatrixError> {
+		let size = self.rows;
+		let (l_mat, u_mat) = self.decompose()?;
+		/*
+		Resource: https://www.youtube.com/watch?v=dza5JTvMpzk
+		- Create one column at a time of the identity matrix.
+		- Find the corresponding column of the inverse matrix.
+		- Combine all the resulting columns.
+		*/
+		// Solve for y L*Y = I using "forward substitution"
+		let mut y_mat = Matrix::identity(size, size)?;
+		for col in 0..size {
+			for row in (col + 1)..size {
+				let mut elem = -l_mat.get_value(row, col)?;
+				let mut computation_message = format!(
+					"Y{row},{col} = L{row},{col} [{l_row_col}]",
+					row = row,
+					col = col,
+					l_row_col = elem
+				);
+				for i in (col + 1)..row {
+					let l_row_i = l_mat.get_value(row, i)?;
+					let y_i_col = y_mat.get_value(i, col)?;
+					elem += -l_row_i * y_i_col;
+					computation_message = format!(
+						"{} - L{row},{i}[{l_row_i}] * Y{i},{col}[{y_i_col}]",
+						computation_message,
+						row = row,
+						col = col,
+						i = i,
+						l_row_i = l_row_i,
+						y_i_col = y_i_col,
+					);
+				}
+				y_mat.set_value(row, col, elem).ok();
+				println!("{}", computation_message);
+				println!("Elem: {}", elem);
+			}
+		}
+
+		// Solve for A (= mat^(-1)) U*A = Y using "back substitution"
+		// 	for row in (0..rows).rev() {
+		// //
+		// 	}
+		// let mut inverted_matrix = Matrix::zeros(cols, rows)?;
+		let mut x_mat = Matrix::zeros(size, size)?;
+		for col in 0..size {
+			for row in (0..size).rev() {
+				let mut elem = y_mat.get_value(row, col)?;
+				let divider = u_mat.get_value(row, row)?;
+				let mut computation_message = format!(
+					"X{row},{col} = 1/U{row},{row}*(Y{row},{col}",
+					row = row,
+					col = col
+				);
+				for i in (row + 1)..size {
+					computation_message = format!(
+						"{} - U{row},{i} * X{i},{col}",
+						computation_message,
+						row = row,
+						col = col,
+						i = i
+					);
+					elem += -u_mat.get_value(row, i)? * x_mat.get_value(i, col)?;
+				}
+				x_mat.set_value(row, col, elem / divider)?;
+				println!("{})", computation_message);
+			}
+		}
+		return Ok(x_mat);
+	}
+
 	pub fn get_size(&self) -> (usize, usize) {
 		return (self.rows, self.cols);
 	}
@@ -273,5 +375,46 @@ mod tests {
 			mat2.data,
 			vec![2.0, 0.0, 2.0, 4.0, 0.0, 2.0, 2.0, 0.0, -2.0]
 		);
+	}
+
+	#[test]
+	fn test_decompose() {
+		let l_original = Matrix::new(
+			4,
+			4,
+			vec![
+				1.0, 2.0, -3.0, 4.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+			],
+		)
+		.unwrap();
+		l_original.print();
+		let u_original = Matrix::new(
+			4,
+			4,
+			vec![
+				3.0, 0.0, 0.0, 0.0, 2.0, 1.0, 0.0, 0.0, 3.0, -2.0, 1.0, 0.0, 1.0, -7.0, 2.0, 1.0,
+			],
+		)
+		.unwrap();
+		u_original.print();
+
+		let mat = l_original.multiplied_by_matrix(&u_original).unwrap();
+		println!("{:?}", mat.get_data());
+		let (l, u) = mat.decompose().unwrap();
+		assert_eq!(l, l_original,);
+		assert_eq!(u, u_original);
+		assert_eq!(l.multiplied_by_matrix(&u).unwrap(), mat)
+	}
+
+	#[test]
+	fn test_invert() {
+		let data: Vec<f64> = vec![
+			3.0, 6.0, -9.0, 12.0, 2.0, 5.0, -6.0, 8.0, 3.0, 4.0, -8.0, 12.0, 1.0, -5.0, -1.0, 5.0,
+		];
+		let mat = Matrix::new(4, 4, data).unwrap();
+		let inv_mat = mat.invert().unwrap();
+		let identity = inv_mat.multiplied_by_matrix(&mat).unwrap();
+		identity.print();
+		assert_eq!(identity, Matrix::identity(4, 4).unwrap());
 	}
 }
